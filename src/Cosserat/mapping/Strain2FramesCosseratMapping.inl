@@ -552,7 +552,7 @@ namespace Cosserat::mapping {
 				// apply F_tot to the new beam
 				Eigen::Matrix<double, N, 1>  temp_f = matB_trans * tempSection * totalForce;
 								
-				// Add accumulated force to strain outpute
+				// Add accumulated force to strain output
 				for (int j=0; j<N; j++){
 					strainForces[lastSectionIndex-1][j] +=temp_f[j];
 				}
