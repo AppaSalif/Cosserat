@@ -28,6 +28,67 @@ set(SOURCE_FILES
     initCosserat.cpp
     engine/GeometricStiffnessEngine.cpp
     engine/CosseratBeamGeometryEngine.cpp
+=======
+    config.h
+
+    mapping/BaseCosserat.h
+    mapping/BaseCosserat.inl
+    mapping/BeamContactMapping.h
+    mapping/BeamContactMapping2.h
+    mapping/DiscreteCosseratMapping.h
+    mapping/DiscreteCosseratMapping.inl
+    mapping/DiscretDynamicCosseratMapping.h
+    mapping/DiscreteDynamicCosseratMapping.inl
+    mapping/DifferenceMultiMapping.h
+    mapping/DifferenceMultiMapping.inl
+    mapping/RigidDistanceMapping.h
+    mapping/RigidDistanceMapping.inl
+    mapping/LegendrePolynomialsMapping.h
+    mapping/LegendrePolynomialsMapping.inl
+    
+    engine/ProjectionEngine.h
+    engine/ProjectionEngine.inl
+    engine/ContactTriad.h
+
+
+
+    forcefield/BeamHookeLawForceField.h
+    forcefield/BeamHookeLawForceField.inl
+    forcefield/BeamHookeLawForceFieldRigid.h
+    forcefield/BeamHookeLawForceFieldRigid.inl
+    forcefield/CosseratInternalActuation.h
+    forcefield/CosseratInternalActuation.inl
+    forcefield/MyUniformVelocityDampingForceField.h
+    forcefield/MyUniformVelocityDampingForceField.inl
+
+    constraint/CosseratSlidingConstraint.h
+    constraint/CosseratSlidingConstraint.inl
+    constraint/QPSlidingConstraint.h
+    constraint/QPSlidingConstraint.inl
+    constraint/CosseratNeedleSlidingConstraint.h
+    constraint/CosseratNeedleSlidingConstraint.inl
+    constraint/ContactPointsUnilateralConstraint.h
+
+    intersection/SphereSweptIntersectionMethod.h
+    intersection/SphereSweptIntersectionMethod2.h
+
+    )
+
+set(SOURCE_FILES
+    initCosserat.cpp
+
+    mapping/BaseCosserat.cpp
+    mapping/BeamContactMapping.cpp
+    mapping/BeamContactMapping2.cpp
+    mapping/DiscreteCosseratMapping.cpp
+    mapping/DiscreteDynamicCosseratMapping.cpp
+    mapping/DifferenceMultiMapping.cpp
+    mapping/RigidDistanceMapping.cpp
+    mapping/LegendrePolynomialsMapping.cpp
+
+    engine/ProjectionEngine.cpp
+
+>>>>>>> zawada/CTR_AWADA
     forcefield/BeamHookeLawForceField.cpp
     mapping/CosseratNonLinearMapping2D.cpp
     mapping/DifferenceMultiMapping.cpp
@@ -43,6 +104,12 @@ find_package(SofaBase REQUIRED)
 find_package(SofaOpenglVisual REQUIRED)
 find_package(Geometric_stiffness REQUIRED)
 find_package(Eigen3 REQUIRED)
+    
+constraint/CosseratSlidingConstraint.cpp
+constraint/QPSlidingConstraint.cpp
+constraint/CosseratNeedleSlidingConstraint.cpp
+constraint/ContactPointsUnilateralConstraint.cpp
+intersection/SphereSweptIntersectionMethod.cpp 
 
 add_library(${PROJECT_NAME} SHARED ${HEADER_FILES} ${SOURCE_FILES})
 target_link_libraries(${PROJECT_NAME} PUBLIC

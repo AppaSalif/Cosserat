@@ -63,6 +63,23 @@ extern void registerRigidDistanceMapping(sofa::core::ObjectFactory *factory);
 namespace controller {
 extern void registerCosseratILQRController(sofa::core::ObjectFactory *factory);
 } // namespace controller
+=======
+extern void registerCosseratNeedleSlidingConstraint(sofa::core::ObjectFactory* factory);
+extern void registerCosseratSlidingConstraint(sofa::core::ObjectFactory* factory);
+extern void registerPointsManager(sofa::core::ObjectFactory* factory);
+extern void registerProjectionEngine(sofa::core::ObjectFactory* factory);
+extern void registerBeamHookeLawForceField(sofa::core::ObjectFactory* factory);
+extern void registerBeamHookeLawForceFieldRigid(sofa::core::ObjectFactory* factory);
+extern void registerCosseratInternalActuation(sofa::core::ObjectFactory* factory);
+extern void registerDifferenceMultiMapping(sofa::core::ObjectFactory* factory);
+extern void registerDiscreteCosseratMapping(sofa::core::ObjectFactory* factory);
+extern void registerDiscretDynamicCosseratMapping(sofa::core::ObjectFactory* factory);
+extern void registerLegendrePolynomialsMapping(sofa::core::ObjectFactory* factory);
+extern void registerRigidDistanceMapping(sofa::core::ObjectFactory* factory);
+extern void registerSphereSweptIntersectionMethod(sofa::core::ObjectFactory* factory);
+extern void registerBeamContactMapping(sofa::core::ObjectFactory* factory);
+extern void registerContactPointsUnilateralConstraint(sofa::core::ObjectFactory* factory);
+
 
 extern "C" {
 SOFA_COSSERAT_API void initExternalModule();
@@ -119,6 +136,22 @@ void registerObjects(sofa::core::ObjectFactory *factory) {
     registerLegendrePolynomialsMapping(factory);
     registerRigidDistanceMapping(factory);
     controller::registerCosseratILQRController(factory);
+=======
+  registerCosseratNeedleSlidingConstraint(factory);
+  registerCosseratSlidingConstraint(factory);
+  registerPointsManager(factory);
+  registerProjectionEngine(factory);
+  registerBeamHookeLawForceField(factory);
+  registerBeamHookeLawForceFieldRigid(factory);
+  registerCosseratInternalActuation(factory);
+  registerDifferenceMultiMapping(factory);
+  registerDiscreteCosseratMapping(factory);
+  registerDiscretDynamicCosseratMapping(factory);
+  registerLegendrePolynomialsMapping(factory);
+  registerRigidDistanceMapping(factory);
+  registerSphereSweptIntersectionMethod(factory);
+  registerBeamContactMapping(factory);
+  registerContactPointsUnilateralConstraint(factory);
 }
 
 const char *getModuleLicense() { return "LGPL"; }

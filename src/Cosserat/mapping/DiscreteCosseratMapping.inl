@@ -25,6 +25,7 @@
 #include <sofa/core/MechanicalParams.h>
 #include <sofa/core/Multi2Mapping.inl>
 #include <sofa/core/behavior/MechanicalState.h>
+#include <sofa/core/MechanicalParams.h>
 #include <sofa/core/objectmodel/BaseContext.h>
 #include <sofa/core/visual/VisualParams.h>
 #include <sofa/gl/template.h>
@@ -32,8 +33,9 @@
 #include <sofa/helper/logging/Message.h>
 #include <sofa/helper/visual/DrawTool.h>
 #include <sofa/type/Quat.h>
-
+#include <cstdlib>
 #include <string>
+<<<<<<< HEAD
 
 // This mapping is templated to support both Vec3 and Vec6 strain inputs;
 // the Vec6 specialisation is provided at the bottom of DiscreteCosseratMapping.cpp.
@@ -86,6 +88,7 @@ namespace Cosserat::mapping {
             return sofa::core::objectmodel::ComponentState::Valid;
         },
         {});
+
     }
 
     template <class TIn1, class TIn2, class TOut>

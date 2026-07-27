@@ -25,7 +25,8 @@ set(SRC_ROOT_LIE_GROUPE src/liegroups)
 # set(SRC_TEST_UNIT tests/unit)
 
 set(HEADER_FILES
-  # Lie group implementations
+
+# Lie group implementations
   ${SRC_ROOT_LIE_GROUPE}/Types.h
   ${SRC_ROOT_LIE_GROUPE}/LieGroupBase.h
   ${SRC_ROOT_LIE_GROUPE}/RealSpace.h
@@ -102,6 +103,46 @@ set(SOURCE_FILES
     ${SRC_ROOT_DIR}/mapping/Strain2FramesCosseratMapping.cpp
     ${SRC_ROOT_DIR}/mapping/Frames2StrainCosseratMapping.cpp
 
+=======
+    ${SRC_ROOT_DIR}/config.h.in
+    ${SRC_ROOT_DIR}/fwd.h
+    ${SRC_ROOT_DIR}/types.h
+    ${SRC_ROOT_DIR}/mapping/BaseCosseratMapping.h
+    ${SRC_ROOT_DIR}/mapping/BaseCosseratMapping.inl
+    ${SRC_ROOT_DIR}/mapping/BeamContactMapping.h
+    ${SRC_ROOT_DIR}/mapping/DiscreteCosseratMapping.h
+    ${SRC_ROOT_DIR}/mapping/DiscreteCosseratMapping.inl
+    ${SRC_ROOT_DIR}/mapping/DiscreteDynamicCosseratMapping.h
+    ${SRC_ROOT_DIR}/mapping/DiscreteDynamicCosseratMapping.inl
+    ${SRC_ROOT_DIR}/engine/ProjectionEngine.h
+    ${SRC_ROOT_DIR}/engine/ProjectionEngine.inl
+    ${SRC_ROOT_DIR}/engine/ContactTriad.h
+    ${SRC_ROOT_DIR}/mapping/DifferenceMultiMapping.h
+    ${SRC_ROOT_DIR}/mapping/DifferenceMultiMapping.inl
+    ${SRC_ROOT_DIR}/mapping/RigidDistanceMapping.h
+    ${SRC_ROOT_DIR}/mapping/RigidDistanceMapping.inl
+    ${SRC_ROOT_DIR}/engine/PointsManager.h
+    ${SRC_ROOT_DIR}/engine/PointsManager.inl
+    ${SRC_ROOT_DIR}/forcefield/BeamHookeLawForceField.h
+    ${SRC_ROOT_DIR}/forcefield/BeamHookeLawForceField.inl
+    ${SRC_ROOT_DIR}/forcefield/BeamHookeLawForceFieldRigid.h
+    ${SRC_ROOT_DIR}/forcefield/BeamHookeLawForceFieldRigid.inl
+    ${SRC_ROOT_DIR}/forcefield/CosseratInternalActuation.h
+    ${SRC_ROOT_DIR}/forcefield/CosseratInternalActuation.inl
+    ${SRC_ROOT_DIR}/constraint/CosseratSlidingConstraint.h
+    ${SRC_ROOT_DIR}/constraint/CosseratSlidingConstraint.inl
+    ${SRC_ROOT_DIR}/mapping/LegendrePolynomialsMapping.h
+    ${SRC_ROOT_DIR}/mapping/LegendrePolynomialsMapping.inl
+    ${SRC_ROOT_DIR}/constraint/CosseratNeedleSlidingConstraint.h
+    ${SRC_ROOT_DIR}/constraint/CosseratNeedleSlidingConstraint.inl
+    ${SRC_ROOT_DIR}/constraint/ContactPointsUnilateralConstraint.h
+    ${SRC_ROOT_DIR}/intersection/SphereSweptIntersectionMethod.h 
+    )
+set(SOURCE_FILES
+    ${SRC_ROOT_DIR}/initCosserat.cpp
+    ${SRC_ROOT_DIR}/mapping/BaseCosseratMapping.cpp
+    ${SRC_ROOT_DIR}/mapping/BeamContactMapping.cpp
+
     ${SRC_ROOT_DIR}/mapping/DiscreteCosseratMapping.cpp
     # ${SRC_ROOT_DIR}/mapping/DiscreteDynamicCosseratMapping.cpp
     ${SRC_ROOT_DIR}/engine/ProjectionEngine.cpp
@@ -117,6 +158,7 @@ set(SOURCE_FILES
     ${SRC_ROOT_DIR}/constraint/CosseratSlidingConstraint.cpp
     ${SRC_ROOT_DIR}/mapping/LegendrePolynomialsMapping.cpp
     ${SRC_ROOT_DIR}/constraint/CosseratNeedleSlidingConstraint.cpp
+
     # Lie-group controllers
     ${SRC_ROOT_DIR}/controller/CosseratILQRController.cpp
     # Painless / Staggered Cosserat
@@ -125,7 +167,12 @@ set(SOURCE_FILES
     ${SRC_ROOT_DIR}/engine/CosseratIntrinsicState.cpp
     ${SRC_ROOT_DIR}/engine/PainlessBeamForceField.cpp
     ${SRC_ROOT_DIR}/mapping/StaggeredCosseratMapping.cpp
+
+
+    ${SRC_ROOT_DIR}/constraint/ContactPointsUnilateralConstraint.cpp
+    ${SRC_ROOT_DIR}/intersection/SphereSweptIntersectionMethod.cpp     
 )
+
 
 sofa_find_package(SoftRobots QUIET)
 if(SoftRobots_FOUND)

@@ -13,7 +13,7 @@ __date__ = "October, 26 2021"
 import Sofa
 from cosserat.usefulFunctions import buildEdges, pluginList, BuildCosseratGeometry
 from splib3.numerics import Quat
-from cosserat.utils import addEdgeCollision, addPointsCollision
+from useful.utils import addEdgeCollision, addPointsCollision
 
 cosserat_config = {'init_pos': [0., 0., 0.], 'tot_length': 6, 'nbSectionS': 6,
                    'nbFramesF': 12, 'buildCollisionModel': 1, 'beamMass': 0.22}
@@ -140,7 +140,7 @@ class Cosserat(Sofa.Prefab):
         # @todo converter
         positions = [list(pos) for pos in self.position.value]
 
-        rigidBaseNode.addObject('MechanicalObject', template='Rigid3d', name="RigidBaseMO", showObjectScale=0.2,
+        rigidBaseNode.addObject('MechanicalObject', template='Rigid3dRigid3d', name="RigidBaseMO", showObjectScale=0.2,
                                 translation=trans, position=positions, rotation=rot,
                                 showObject=int(self.showObject.value))
 
