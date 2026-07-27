@@ -28,7 +28,7 @@ set(SOURCE_FILES
     initCosserat.cpp
     engine/GeometricStiffnessEngine.cpp
     engine/CosseratBeamGeometryEngine.cpp
-=======
+
     config.h
 
     mapping/BaseCosserat.h
@@ -88,7 +88,7 @@ set(SOURCE_FILES
 
     engine/ProjectionEngine.cpp
 
->>>>>>> zawada/CTR_AWADA
+
     forcefield/BeamHookeLawForceField.cpp
     mapping/CosseratNonLinearMapping2D.cpp
     mapping/DifferenceMultiMapping.cpp

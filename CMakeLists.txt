@@ -103,7 +103,7 @@ set(SOURCE_FILES
     ${SRC_ROOT_DIR}/mapping/Strain2FramesCosseratMapping.cpp
     ${SRC_ROOT_DIR}/mapping/Frames2StrainCosseratMapping.cpp
 
-=======
+
     ${SRC_ROOT_DIR}/config.h.in
     ${SRC_ROOT_DIR}/fwd.h
     ${SRC_ROOT_DIR}/types.h

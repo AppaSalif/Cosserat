@@ -63,7 +63,7 @@ extern void registerRigidDistanceMapping(sofa::core::ObjectFactory *factory);
 namespace controller {
 extern void registerCosseratILQRController(sofa::core::ObjectFactory *factory);
 } // namespace controller
-=======
+
 extern void registerCosseratNeedleSlidingConstraint(sofa::core::ObjectFactory* factory);
 extern void registerCosseratSlidingConstraint(sofa::core::ObjectFactory* factory);
 extern void registerPointsManager(sofa::core::ObjectFactory* factory);
@@ -136,7 +136,7 @@ void registerObjects(sofa::core::ObjectFactory *factory) {
     registerLegendrePolynomialsMapping(factory);
     registerRigidDistanceMapping(factory);
     controller::registerCosseratILQRController(factory);
-=======
+
   registerCosseratNeedleSlidingConstraint(factory);
   registerCosseratSlidingConstraint(factory);
   registerPointsManager(factory);
