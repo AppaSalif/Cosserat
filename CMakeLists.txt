@@ -102,7 +102,7 @@ set(SOURCE_FILES
     ${SRC_ROOT_DIR}/mapping/CosseratGeometryMapping.cpp
     ${SRC_ROOT_DIR}/mapping/Strain2FramesCosseratMapping.cpp
     ${SRC_ROOT_DIR}/mapping/Frames2StrainCosseratMapping.cpp
-
+    ${SRC_ROOT_DIR}/mapping/BeamContactMapping.cpp
 
     ${SRC_ROOT_DIR}/config.h.in
     ${SRC_ROOT_DIR}/fwd.h
@@ -123,12 +123,16 @@ set(SOURCE_FILES
     ${SRC_ROOT_DIR}/mapping/RigidDistanceMapping.inl
     ${SRC_ROOT_DIR}/engine/PointsManager.h
     ${SRC_ROOT_DIR}/engine/PointsManager.inl
-    ${SRC_ROOT_DIR}/forcefield/BeamHookeLawForceField.h
-    ${SRC_ROOT_DIR}/forcefield/BeamHookeLawForceField.inl
-    ${SRC_ROOT_DIR}/forcefield/BeamHookeLawForceFieldRigid.h
-    ${SRC_ROOT_DIR}/forcefield/BeamHookeLawForceFieldRigid.inl
-    ${SRC_ROOT_DIR}/forcefield/CosseratInternalActuation.h
-    ${SRC_ROOT_DIR}/forcefield/CosseratInternalActuation.inl
+    
+    # --- CORRECTION DES CHEMINS ICI ---
+    ${SRC_ROOT_DIR}/forcefield/standard/BeamHookeLawForceField.h
+    ${SRC_ROOT_DIR}/forcefield/standard/BeamHookeLawForceField.inl
+    ${SRC_ROOT_DIR}/forcefield/rigid/BeamHookeLawForceFieldRigid.h
+    ${SRC_ROOT_DIR}/forcefield/rigid/BeamHookeLawForceFieldRigid.inl
+    ${SRC_ROOT_DIR}/forcefield/experimental/CosseratInternalActuation.h
+    ${SRC_ROOT_DIR}/forcefield/experimental/CosseratInternalActuation.inl
+    # ----------------------------------
+
     ${SRC_ROOT_DIR}/constraint/CosseratSlidingConstraint.h
     ${SRC_ROOT_DIR}/constraint/CosseratSlidingConstraint.inl
     ${SRC_ROOT_DIR}/mapping/LegendrePolynomialsMapping.h
@@ -137,11 +141,6 @@ set(SOURCE_FILES
     ${SRC_ROOT_DIR}/constraint/CosseratNeedleSlidingConstraint.inl
     ${SRC_ROOT_DIR}/constraint/ContactPointsUnilateralConstraint.h
     ${SRC_ROOT_DIR}/intersection/SphereSweptIntersectionMethod.h 
-    )
-set(SOURCE_FILES
-    ${SRC_ROOT_DIR}/initCosserat.cpp
-    ${SRC_ROOT_DIR}/mapping/BaseCosseratMapping.cpp
-    ${SRC_ROOT_DIR}/mapping/BeamContactMapping.cpp
 
     ${SRC_ROOT_DIR}/mapping/DiscreteCosseratMapping.cpp
     # ${SRC_ROOT_DIR}/mapping/DiscreteDynamicCosseratMapping.cpp
@@ -172,6 +171,7 @@ set(SOURCE_FILES
     ${SRC_ROOT_DIR}/constraint/ContactPointsUnilateralConstraint.cpp
     ${SRC_ROOT_DIR}/intersection/SphereSweptIntersectionMethod.cpp     
 )
+
 
 
 sofa_find_package(SoftRobots QUIET)

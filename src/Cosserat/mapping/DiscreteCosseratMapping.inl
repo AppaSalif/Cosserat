@@ -35,7 +35,7 @@
 #include <sofa/type/Quat.h>
 #include <cstdlib>
 #include <string>
-<<<<<<< HEAD
+
 
 // This mapping is templated to support both Vec3 and Vec6 strain inputs;
 // the Vec6 specialisation is provided at the bottom of DiscreteCosseratMapping.cpp.

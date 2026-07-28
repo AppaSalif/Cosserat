@@ -1,125 +1,7 @@
-# -*- coding: utf-8 -*-
-"""
-simulate_ctr_two_tubes.py
-=========================
-SOFA / Cosserat Plugin — Concentric Tube Robot (CTR) with two pre-curved tubes.
-
-Tubes (all SI units)
---------------------
-  Tube_1  (outer) : L=17 cm, R_crv=12 cm, arc=60 deg,    OD=3 mm,   ID=2.7 mm
-  Tube_3  (inner) : L=33 cm, R_crv=6 cm,  arc=143.2 deg, OD=0.8 mm, ID=0.54 mm
-
-INITIAL CONFIGURATION — CONCENTRIC PLACEMENT
----------------------------------------------
-  The global frame sits at Tube_1's rigid base (world origin).
-  Tube_1 takes its natural configuration freely from t=0 (no change).
-
-  Tube_3 is the longer tube and is placed behind Tube_1 by X mm along -X so
-  that no part of Tube_3 protrudes beyond Tube_1's tip at t=0.  This avoids
-  the ill-posed question of what shape the protruding section should adopt.
-
-  Offset derivation (both tubes straight along +X at t=0):
-    Tube_1 base @ x=0,    tip @ x = +L1
-    Tube_3 base @ x=-X,   tip @ x = -X + L3
-
-  Tip-coincidence condition  ->  X = L3 - L1  (> 0 because L3 > L1)
-
-  With the parameters below:
-    X = 0.33 - 0.17 = 0.16 m = 160 mm
-    Tube_3 rigid base at x = -0.16 m
-
-  compute_concentric_offset() encodes this computation and is called once
-  in createScene().  Only Tube_3 receives the offset; Tube_1 is untouched.
-
-NODE TOPOLOGY (single-parent, mirrors PrecurvedTube exactly)
-------------------------------------------------------------
-  tube_node  (EulerImplicitSolver + SparseLDL -- the solver scope)
-    +-- <n>_rigid_base   (Rigid3d base DOF + proximal BC)
-    +-- <n>_coss_state   (Vec3d strain DOFs + BeamHooke)
-    +-- <n>_frames       (child of SolverNode ONLY -- single parent)
-          +-- FramesMO   (Rigid3d output frames)
-          +-- UniformMass
-          +-- DiscreteCosseratMapping
-                input1 = "@../<n>_coss_state/cosserat_state"
-                input2 = "@../<n>_rigid_base/cosserat_base_mo"
-          +-- <n>_visu
-                +-- MeshTopology (ring_pos, quads -- rest shape)
-                +-- visMO        (Vec3d -- mechanical target of RigidMapping)
-                +-- RigidMapping (FramesMO -> visMO, rigidIndexPerPoint)
-                +-- ogl
-                      +-- OglModel       (src=../topo)
-                      +-- IdentityMapping (visMO -> OglModel)
-
-WHY SINGLE-PARENT?
-  SOFA's VisualUpdateVisitor traverses a *tree*.  When frame_node has two
-  parents (rigid_base AND coss_state), the visitor reaches it via rigid_base,
-  processes its visual children, then arrives again via coss_state -- and skips
-  it (already-visited flag).  The visual update never fires a second time, so
-  OglModel positions freeze at t=0.  Making frame_node a child of SolverNode
-  only (single parent) eliminates the double-visit and the visual chain updates
-  every step, exactly as in PrecurvedTube.
-
-CUSTOM CONTACT PIPELINE (replaces classic SOFA collision pipeline entirely)
---------------------------------------------------------------------------
-  The entire classic pipeline (CollisionPipeline, BruteForceBroadPhase,
-  BVHNarrowPhase, LocalMinDistance, RuleBasedContactManager,
-  LineCollisionModel, PointCollisionModel) is removed.  Contact is handled by:
-
-    SphereSweptIntersectionMethod (SSIM)  [BaseObject, executed by BCM]
-      For CTR internal contact: radius1 = rin_1 (inner wall of Tube_1),
-      radius2 = rex_3 (outer wall of Tube_3).
-      gap = rin_1 - d_centreline - rex_3
-         > 0  ->  clearance   (no contact)
-         = 0  ->  touching
-         < 0  ->  penetrating
-
-      NOTE: SSIM must be configured for internal-contact mode so that it
-      computes gap = r1 - d - r2 (not the external formula d - r1 - r2).
-      The radius arguments passed here are the physically correct surfaces;
-      the sign convention in SphereSweptIntersectionMethod.cpp must match.
-
-    BeamContactMapping (BCM)  [Multi2Mapping<Rigid3d,Rigid3d,Vec3d>]
-      mode = 'gap'  (single output MO, avoids SceneCheckMapping conflict).
-      input1 = Tube_1/SolverNode/Tube_1_frames/FramesMO
-      input2 = Tube_3/SolverNode/Tube_3_frames/FramesMO
-      out[k] = delta[k] = Pc_B[k] - Pc_A[k]
-
-    ContactPointsUnilateralConstraint (CPUC)
-      Reads BCM contact points, contact triads, and gap sign.
-      Activates pair k when the current gap is below ALARM_DISTANCE.
-
-  Scene graph
-  -----------
-  root
-  +-- FreeMotionAnimationLoop
-  +-- BlockGaussSeidelConstraintSolver
-  +-- Tube_1/
-  |   +-- SolverNode/
-  |       +-- EulerImplicitSolver + SparseLDLSolver + GenericConstraintCorrection
-  |       +-- Tube_1_rigid_base/  cosserat_base_mo + full-pose RestShapeSpringsForceField
-  |       +-- Tube_1_coss_state/  cosserat_state + BeamHookeLawForceField
-  |       +-- Tube_1_frames/      FramesMO + UniformMass + DiscreteCosseratMapping
-  |           +-- Tube_1_visu/    MeshTopology + visMO + RigidMapping + ogl/
-  +-- Tube_3/
-  |   +-- SolverNode/
-  |       +-- EulerImplicitSolver + SparseLDLSolver + GenericConstraintCorrection
-  |       +-- Tube_3_rigid_base/  cosserat_base_mo + full-pose RestShapeSpringsForceField
-  |       +-- Tube_3_coss_state/  cosserat_state + BeamHookeLawForceField
-  |       +-- Tube_3_frames/      FramesMO + UniformMass + DiscreteCosseratMapping
-  |           +-- Tube_3_visu/    MeshTopology + visMO + RigidMapping + ogl/
-  +-- contact_node/
-      +-- SphereSweptIntersectionMethod  (ssim)
-      +-- contactMO_ref  (Vec3d, MAX_K zero DOFs -- ULC object1 zero reference)
-      +-- contactMO_gap  (Vec3d, K DOFs    -- BCM sole output, delta[k] = Pc_B-Pc_A)
-      +-- BeamContactMapping  (bcm)  mappingMode='gap'
-      +-- ContactPointsUnilateralConstraint  (cpuc)
-"""
-
+import Sofa
 import math
 import os
 import sys
-import Sofa
-import Sofa.Core
 
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PARENT_DIR not in sys.path:
@@ -128,18 +10,10 @@ if PARENT_DIR not in sys.path:
 from init_monitoring import InitializationMonitor
 from live_monitor   import LiveContactMonitor
 from gui import CTRGuiBridge
-from protruded_shape_monitor import ProtrudedShapeMonitor
 from ctr_solver_twist_logger import CTRSolverTwistLogger
+from protruded_shape_monitor import ProtrudedShapeMonitor
 
-MAPPING_COMPONENT = 'BeamContactMapping'
-CSV_SUFFIX = 'BCM'
-DIAG_CSV_PATH = f'ctr_two_tubes_dynamic_diagnosis_{CSV_SUFFIX}.csv'
-INIT_PNG_PATH = f'init_phase_gap_profile_{CSV_SUFFIX}.png'
 
-AUTO_TRANSLATION_TARGET_M = 0.04
-AUTO_TRANSLATION_STEP_M = 50e-6
-AUTO_ROTATION_RATE_DEG_S = 0.5
-AUTO_ROTATION_DURATION_S = 120.0
 # =============================================================================
 #  TUBE PHYSICAL PARAMETERS
 # =============================================================================
@@ -149,7 +23,7 @@ T1_PARAMS = {
     'tube_number':   1,
     'str_length':    0.17,        # total arc length [m]
     'crv_radius':    0.12,        # curvature radius [m]
-    'crv_angle_deg': 14.32,
+    'crv_angle_deg': 14.32,       # angle total de la partie courbée
     'rex':           15e-4,       # outer radius [m]
     'rin':           13.5e-4,     # inner (lumen) radius [m]
     'E':             6e10,
@@ -179,22 +53,10 @@ T2_PARAMS = {
 N_CIRCLE = 10   # points per cross-sectional ring for visual model
 DEFAULT_NORMAL      = '0 1 0'
 
-# =============================================================================
-#  CONTACT PIPELINE PARAMETERS
-# =============================================================================
-
-# "ALGO_1": segment-to-segment closest pair (NB_SEC_1 x NB_SEC_3 pairs max)
-# "ALGO_2": node-to-segment Newton-Raphson  ((NB_FRM_1+1) x NB_SEC_3 pairs max)
-ALGORITHM = "ALGO_1"
-
-# Pre-allocated size of contactMO_ref (zero-reference MO for ULC).
-# Must be >= maximum number of contact pairs SSIM can ever produce.
-# ALGO_1 upper bound: nb_sections_1 x nb_sections_3
-# ALGO_2 upper bound: (nb_frames_1 + 1) x nb_sections_3
 MAX_K = max(
     T1_PARAMS['nb_sections'] * T2_PARAMS['nb_sections'],          # ALGO_1: 10x20 = 200
     (T1_PARAMS['nb_frames'] + 1) * T2_PARAMS['nb_sections'],      # ALGO_2: 21x20 = 420
-)   # -> 420
+)   # -> 1860
 
 # CTR internal contact geometry:
 #   The relevant surfaces are the inner wall of Tube_1 (radius = rin_1)
@@ -282,7 +144,7 @@ def compute_concentric_offset(p_outer, p_inner):
         f"-- '{p_inner['name']}' rigid base at x = {-X * 1e3:.1f} mm  "
         f"(tips coincide at x = +{L_outer * 1e3:.1f} mm)"
     )
-    return -X   # negative: inner base sits behind the outer base
+    return -X   # negative: inner base sits behind the outer base    
 
 def compute_tube_geometry(p, x_offset=0.0,
                          init_strategy='natural',
@@ -333,7 +195,7 @@ def compute_tube_geometry(p, x_offset=0.0,
     R     = p['crv_radius']
     theta = math.radians(p['crv_angle_deg'])
     ns    = p['nb_sections']
-    nf    = p['nb_frames']
+    # nf    = p['nb_frames'] #Modif pour F2S
 
     L_crv = R * theta
     L_str = max(0.0, L - L_crv)
@@ -351,10 +213,10 @@ def compute_tube_geometry(p, x_offset=0.0,
     lc = L_crv / n_crv
 
     section_lengths = [ls] * n_str + [lc] * n_crv
-    rest_states     = [[0., 0., 0., 0., 0., 0.]] * n_str + [[0., 0., kappa, 0., 0., 0.]] * n_crv
+    rest_states     = [[0., 0., 0., 1., 0., 0.]] * n_str + [[0., 0., kappa, 1., 0., 0.]] * n_crv
 
     if init_strategy == 'straight':
-        init_states = [[0., 0., 0.]] * ns
+        init_states = [[0., 0., 0., 1., 0., 0.]] * ns
 
     elif init_strategy == 'natural':
         # Strain DOFs at t=0 already match the natural rest shape -> zero
@@ -406,7 +268,7 @@ def compute_tube_geometry(p, x_offset=0.0,
             s_in2 = s_run + sl - X     # inner section end   in outer coords
             angle = _outer_bend_angle(s_in1, s_in2)
             avg_kappa = angle / sl     # constant strain that yields 'angle'
-            init_states.append([0.0, 0.0, avg_kappa, 0.0, 0.0, 0.0])
+            init_states.append([0.0, 0.0, avg_kappa, 1., 0., 0.])
             s_run += sl
     else:
         raise ValueError(f"Unknown init_strategy: {init_strategy!r}")
@@ -418,8 +280,12 @@ def compute_tube_geometry(p, x_offset=0.0,
         s += sl
         sec_curv_abs.append(round(s, 10))
 
-    lf           = L / nf
-    frm_curv_abs = [round(i * lf, 10) for i in range(nf + 1)]
+
+    ## abscisses des frames; frame_curv_abs aligné aux sections
+    ### Ici, nf = ns et les frames sont aux mêmes abscisses que les bornes des sections
+    
+    frm_curv_abs = list(sec_curv_abs)
+    nf = len(frm_curv_abs)
 
     frame_positions = integrate_frame_positions(
         section_lengths, init_states, frm_curv_abs, x_offset
@@ -430,12 +296,12 @@ def compute_tube_geometry(p, x_offset=0.0,
 
     return (section_lengths, rest_states, init_states,
             sec_curv_abs, frame_positions, frm_curv_abs,
-            edge_indices)
+            edge_indices)    
+
 
 def tube_mass(p):
     ri, re = p['rin'], p['rex']
     return p['density'] * math.pi * (re**2 - ri**2) * p['str_length']
-
 
 def build_tube_quads(n_frames, N):
     """Quad faces for a cylindrical surface (n_frames rings x N points)."""
@@ -824,9 +690,7 @@ def add_cosserat_tube(root_node,
 
     re, ri = p['rex'], p['rin']
     nf     = p['nb_frames']
-    mass   = tube_mass(p)
-
-
+    mass   = tube_mass(p)    
 
     I_sec      = math.pi / 4.0 * (re ** 4 - ri ** 4)   # second moment of area [m^4]
     L_avg      = sum(section_lengths) / len(section_lengths)
@@ -844,14 +708,16 @@ def add_cosserat_tube(root_node,
         computeResidual=True,
     )
 
-    solver_node.addObject('SparseLDLSolver',
+    solver_node.addObject('BTDLinearSolver',
                           name='Solver',
-                          template='CompressedRowSparseMatrixd')
+                        #   template='CompressedRowSparseMatrixd',
+                          )
 
     solver_node.addObject('GenericConstraintCorrection',
                           linearSolver='@Solver',
                           regularizationTerm=1e-8
-                          )
+                          )    
+
 
     # ---- Rigid base ----------------------------------------------------------
     rigid_base = solver_node.addChild(name + '_rigid_base')
@@ -881,191 +747,61 @@ def add_cosserat_tube(root_node,
             template='Rigid3d',
             activeDirections=[1, 1, 1, 1, 1, 1, 1])
 
-    # ---- Cosserat strain state -----------------------------------------------
-    coss_state = solver_node.addChild(name + '_coss_state')
-    coss_mo = coss_state.addObject(
-        'MechanicalObject',
-        template='Vec6d',
-        name='cosserat_state',
-        position=init_states,
-        rest_position=rest_states,
-    )
-    coss_state.addObject(
-        'BeamHookeLawForceField',
-        name='beam_force',
-        crossSectionShape='circular',
-        length=section_lengths,
-        radius=re,
-        innerRadius=ri,
-        youngModulus=p['E'],
-        poissonRatio=p['v'],
-        template='Vec6d',
-    )
 
-    # ---- Output frames -- SINGLE parent (SolverNode) ------------------------
-    # Do NOT addChild from rigid_base or coss_state here.
-    # DiscreteCosseratMapping reaches both inputs via relative sibling paths.
     frame_node = solver_node.addChild(name + '_frames')
-
-    frame_node.addObject(
+    frame_mo = frame_node.addObject(
         'MechanicalObject',
         template='Rigid3d',
         name='FramesMO',
-        # frame_positions already carry x_offset (set in compute_tube_geometry).
         position=frame_positions,
         showObject=True,
         showObjectScale=0.001,
     )
-    frame_node.addObject('UniformMass', name='mass', totalMass=mass)
+
     frame_node.addObject(
-        'Strain2FramesCosseratMapping',
-        name='cosseratMapping',
-        # curv_abs_input / curv_abs_output are intrinsic arc lengths measured
-        # from the tube's own base -- they are NEVER offset.
-        curv_abs_input=sec_curv_abs,
-        curv_abs_output=frm_curv_abs,
-        input1='@../' + name + '_coss_state/cosserat_state',
-        input2='@../' + name + '_rigid_base/cosserat_base_mo',
-        output='@FramesMO',
-        debug=False,
+            'RestShapeSpringsForceField',
+            name='attach_frame0_to_base',
+            stiffness=stiffness,
+            angularStiffness=1e8,
+            external_rest_shape=base_mo.getLinkPath(),
+            external_points=[0],
+            points=[0],
+            template='Rigid3d',
+            activeDirections=[1, 1, 1, 1, 1, 1, 1])
+
+    frame_node.addObject('UniformMass', name='mass', totalMass=mass)
+
+    strain_node = frame_node.addChild(name + '_coss_state')
+    strain_mo = strain_node.addObject('MechanicalObject', 
+            template='Vec6d', 
+            name='cosserat_state', 
+            position=init_states,
+            rest_position=rest_states,
+            )
+
+    strain_node.addObject("BeamHookeLawForceField",
+            name="beam_force",
+            crossSectionShape='circular',
+            length=section_lengths,
+            radius=re,
+            innerRadius=ri,
+            youngModulus=p['E'],
+            poissonRatio=p['v'],
+            template='Vec6d',
+            )
+
+    strain_node.addObject("Frames2StrainCosseratMapping", 
+        curv_abs_input=sec_curv_abs, 
+        curv_abs_output=frm_curv_abs, 
+        name="cosseratMapping",
+        input=frame_node.getLinkPath(),
+        output='@' + name + '_coss_state/cosserat_state',
+        debug=0,
         radius=re,
     )
 
-    return base_mo, coss_mo, tube_node, frame_node, odesolver
+    return base_mo, strain_mo, tube_node, frame_node, odesolver, strain_node
 
-
-# =============================================================================
-#  CONTROLLER
-# =============================================================================
-
-class AutomatedCTRBridge:
-    """Minimal no-GUI bridge used by loggers and monitors."""
-
-    def __init__(self):
-        self._phase = 'initializing'
-
-    def snapshot(self):
-        return {
-            'phase': self._phase,
-            'translation_step_m': AUTO_TRANSLATION_STEP_M,
-            't1_translation_target_m': 0.0,
-            't2_translation_target_m': AUTO_TRANSLATION_TARGET_M,
-            't1_rotation_target_rad': 0.0,
-            't2_rotation_target_rad': 0.0,
-            'rotation_step_rad': math.radians(AUTO_ROTATION_RATE_DEG_S) * CONTROL_DT,
-        }
-
-    def consume_dt_request(self):
-        return None
-
-    def signal_init_complete(self):
-        self._phase = 'control'
-        print("[AutomatedCTRBridge] initialization complete; starting automated control")
-
-    def mark_done(self):
-        self._phase = 'done'
-        print("[AutomatedCTRBridge] automated control complete")
-
-    def push_contact_profile(self, *args, **kwargs):
-        pass
-
-    def push_contact_surface_profile(self, *args, **kwargs):
-        pass
-
-    def push_curvature_profile(self, *args, **kwargs):
-        pass
-
-    def push_protruded_shape_profile(self, *args, **kwargs):
-        pass
-
-
-class AutomatedCTRController(Sofa.Core.Controller):
-    """
-    Deterministic no-GUI actuation:
-      1. Hold both base controls during initialization.
-      2. After InitializationMonitor switches to control, translate Tube_3 by
-         4 cm with the fixed per-step limiter.
-      3. Once translation reaches 4 cm, rotate Tube_3 at 0.5 deg/s for 120 s.
-    """
-
-    def __init__(self,
-                 root_node,
-                 t1_control_mo,
-                 t2_control_mo,
-                 t2_x_offset,
-                 bridge,
-                 *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.root_node = root_node
-        self.t1_control_mo = t1_control_mo
-        self.t2_control_mo = t2_control_mo
-        self.t2_x0 = float(t2_x_offset)
-        self.bridge = bridge
-        self._t1_pos_m = 0.0
-        self._t2_pos_m = 0.0
-        self._t1_angle_rad = 0.0
-        self._t2_angle_rad = 0.0
-        self._entered_control = False
-        self._rotation_start_time = None
-        self._finished = False
-
-    def onAnimateBeginEvent(self, event):
-        phase = self.bridge.snapshot().get('phase', 'initializing')
-        if phase == 'control' and not self._finished:
-            if not self._entered_control:
-                self.root_node.dt = CONTROL_DT
-                self._entered_control = True
-                print(
-                    f"[AutomatedCTRController] translating Tube_3 by "
-                    f"{AUTO_TRANSLATION_TARGET_M * 100.0:.1f} cm")
-
-            dt = float(self.root_node.dt.value)
-            if self._t2_pos_m < AUTO_TRANSLATION_TARGET_M - 1e-15:
-                self._t2_pos_m = min(
-                    AUTO_TRANSLATION_TARGET_M,
-                    self._t2_pos_m + AUTO_TRANSLATION_STEP_M)
-                if abs(self._t2_pos_m - AUTO_TRANSLATION_TARGET_M) <= 1e-15:
-                    self._rotation_start_time = float(self.root_node.getTime())
-                    print(
-                        f"[AutomatedCTRController] translation reached; rotating "
-                        f"Tube_3 at {AUTO_ROTATION_RATE_DEG_S:.3g} deg/s for "
-                        f"{AUTO_ROTATION_DURATION_S:.3g} s")
-            else:
-                if self._rotation_start_time is None:
-                    self._rotation_start_time = float(self.root_node.getTime())
-
-                elapsed = float(self.root_node.getTime()) - self._rotation_start_time
-                remaining = AUTO_ROTATION_DURATION_S - elapsed
-                if remaining > 0.0:
-                    self._t2_angle_rad += math.radians(
-                        AUTO_ROTATION_RATE_DEG_S) * min(dt, remaining)
-                else:
-                    self._finished = True
-                    self.bridge.mark_done()
-                    try:
-                        self.root_node.animate = False
-                    except Exception:
-                        pass
-
-        self._set_pose(self.t1_control_mo, self._t1_pos_m, self._t1_angle_rad,
-                       x0=0.0)
-        self._set_pose(self.t2_control_mo, self._t2_pos_m, self._t2_angle_rad,
-                       x0=self.t2_x0)
-
-    @staticmethod
-    def _set_pose(mo, tx, angle_rad, x0=0.0):
-        half = angle_rad * 0.5
-        s, c = math.sin(half), math.cos(half)
-        with mo.position.writeable() as pos:
-            p = list(pos[0])
-            p[0] = x0 + tx
-            p[1] = 0.0
-            p[2] = 0.0
-            p[3] = s
-            p[4] = 0.0
-            p[5] = 0.0
-            p[6] = c
-            pos[0] = p
 
 
 class CTRController(Sofa.Core.Controller):
@@ -1285,6 +1021,7 @@ class CTRController(Sofa.Core.Controller):
             p[5] = 0.0
             p[6] = c
             pos[0] = p
+
 
 
 class CTRDiagnosticLogger(Sofa.Core.Controller):
@@ -1569,6 +1306,7 @@ class CTRDiagnosticLogger(Sofa.Core.Controller):
         )
 
 
+
 class protrudedCurvatureMonitor(Sofa.Core.Controller):
     """Push live curvature of only the protruded Tube_3 sections to the GUI."""
 
@@ -1628,7 +1366,9 @@ class protrudedCurvatureMonitor(Sofa.Core.Controller):
 #  CREATE SCENE
 # =============================================================================
 
+
 def createScene(root_node):
+
 
     # ---- Required plugins ---------------------------------------------------
     # Classic collision pipeline plugins (CollisionDetection.Algorithm,
@@ -1659,7 +1399,7 @@ def createScene(root_node):
     ])
 
     root_node.gravity = [0., 0., 0.]
-    root_node.dt      = INIT_DT
+    root_node.dt      = INIT_DT    
 
     root_node.addObject('DefaultVisualManagerLoop')
     root_node.addObject('FreeMotionAnimationLoop')
@@ -1684,7 +1424,7 @@ def createScene(root_node):
                                      'hideForceFields '
                                      'hideInteractionForceFields '
                                      'hideWireframe '
-                                     'hideMechanicalMappings')
+                                     'hideMechanicalMappings')    
 
     # ---- Compute Tube_3's retraction offset ---------------------------------
     # X = L_inner - L_outer = 0.33 - 0.17 = 0.16 m = 160 mm
@@ -1702,7 +1442,7 @@ def createScene(root_node):
         base_pos=[0., 0., 0.],
         base_quat=[0., 0., 0., 1.])
 
-    t1_base_mo, t1_coss_mo, _, t1_frame_node, t1_solver = add_cosserat_tube(
+    t1_base_mo, t1_strain_mo, _, t1_frame_node, t1_solver, t1_strain_node = add_cosserat_tube(
         root_node = root_node,
         p = T1_PARAMS,
         x_offset= 0,
@@ -1711,13 +1451,14 @@ def createScene(root_node):
         base_control_mo=tube1_control_mo
     )
 
+
     tube2_control_mo = add_base_control_point(
         root_node,
         'Tube3',
         base_pos=[x_t3, 0., 0.],
         base_quat=[0., 0., 0., 1.])
 
-    t2_base_mo, t2_coss_mo, _, t2_frame_node, t2_solver = add_cosserat_tube(
+    t2_base_mo, t2_strain_mo, _, t2_frame_node, t2_solver, t2_strain_node = add_cosserat_tube(
         root_node, T2_PARAMS,
         x_offset=x_t3,
         init_strategy='conform_to_outer',
@@ -1729,7 +1470,6 @@ def createScene(root_node):
 
     add_tube_visual(t1_frame_node, T1_PARAMS, color=T1_PARAMS['color'])  # outer
     add_tube_visual(t2_frame_node, T2_PARAMS, color=T2_PARAMS['color'])  # inner
-
 
     gui_bridge = CTRGuiBridge(
         root_node=root_node,
@@ -1833,13 +1573,13 @@ def createScene(root_node):
         activationTolerance = 1e-4,
     )
 
-
     t2_curv_abs_frames = list(
-        t2_frame_node.cosseratMapping.curv_abs_output.value
+        t2_strain_node.cosseratMapping.curv_abs_output.value
     )
     t2_sec_curv_abs = list(
-        t2_frame_node.cosseratMapping.curv_abs_input.value
+        t2_strain_node.cosseratMapping.curv_abs_input.value
     )
+
 
     intersection_node.addObject(CTRDiagnosticLogger(
         name='DiagLogger',
@@ -1849,9 +1589,9 @@ def createScene(root_node):
         t2_base_mo=t2_base_mo,
         t1_control_mo=tube1_control_mo,
         t2_control_mo=tube2_control_mo,
-        t1_coss_mo=t1_coss_mo,
+        t1_coss_mo=t1_strain_mo,
         t1_frames_mo=t1_MO,
-        t2_coss_mo=t2_coss_mo,
+        t2_coss_mo=t2_strain_mo,
         t2_frames_mo=t2_MO,
         t2_sec_curv_abs=t2_sec_curv_abs,
         contact_mo=contactMO,
@@ -1860,18 +1600,18 @@ def createScene(root_node):
         t2_x_offset=x_t3,
         path='ctr_two_tube_dynamic_diagnosis.csv',
         every_n_steps=20,
-    ))
+    ))    
 
     intersection_node.addObject(protrudedCurvatureMonitor(
         name='protrudedCurvatureMonitor',
         gui_bridge=gui_bridge,
         t1_base_mo=t1_base_mo,
         t2_base_mo=t2_base_mo,
-        t2_coss_mo=t2_coss_mo,
+        t2_coss_mo=t2_strain_mo,
         t2_sec_curv_abs=t2_sec_curv_abs,
         t2_x_offset=x_t3,
         every_n_steps=20,
-    ))
+    ))   
 
     intersection_node.addObject(ProtrudedShapeMonitor(
         name='ProtrudedShapeMonitor',
@@ -1879,17 +1619,18 @@ def createScene(root_node):
         t1_base_mo=t1_base_mo,
         t2_base_mo=t2_base_mo,
         t2_frames_mo=t2_MO,
-        t2_coss_mo=t2_coss_mo,
+        t2_coss_mo=t2_strain_mo,
         t2_frame_curv_abs=t2_curv_abs_frames,
         t2_sec_curv_abs=t2_sec_curv_abs,
         t2_length=T2_PARAMS['str_length'],
         t2_x_offset=x_t3,
         every_n_steps=20,
-    ))
+    ))     
 
     def finish_initialization():
         root_node.dt = CONTROL_DT
         gui_bridge.signal_init_complete()
+
 
     intersection_node.addObject(InitializationMonitor(
         name='InitMonitor',
@@ -1926,5 +1667,6 @@ def createScene(root_node):
     ))
 
     root_node.animate = False
+
 
     return root_node
